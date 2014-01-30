@@ -373,7 +373,7 @@ namespace VkParser
                 List<Comment> Admin = new List<Comment>();
                 for (int i = 0; i < Comments.Count; i++)
                 {
-                    if (Convert.ToInt64(Comments[i].UserId) < 0)
+									if (Comments[i].UserId!=null&&Convert.ToInt64(Comments[i].UserId) < 0)
                     {
                         Comments[i].UserName = "admin";
                         Admin.Add(Comments[i]);
@@ -426,12 +426,24 @@ namespace VkParser
         private List<string> PhoneSearch(Comment obj)
         {
             string pattern = @"(^((8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)|(?<=\W)(8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)";
+					var pattern2=@"((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}";
             string str = obj.CommentText;
+						if (str.Contains("http"))
+							str = str.Remove(str.IndexOf("http"), str.IndexOf(" ", str.IndexOf("http")) - str.IndexOf("http"));
+					if(str.Contains("id"))
+						str = str.Remove(str.IndexOf("id"), str.IndexOf("]", str.IndexOf("id")) - str.IndexOf("id"));
             while (true)
             {
                 Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
+								Regex r2 = new Regex(pattern2, RegexOptions.IgnoreCase);
                 var ms = r.Matches(str).Cast<Match>().Select(m => m.Value).ToList();
-                var res = (from m in ms where m != "" where m.Length >= 9 select GetDigits(m) into num where num.Length >= 9 select num).ToList();
+								var ms2 = r2.Matches(str).Cast<Match>().Select(m => m.Value).ToList();
+                var res = (from m in ms where m != "" where m.Length >= 9 select GetDigits(m) into num where num.Length >= 6&&num.Length<11 select num).ToList();
+								var res2 = (from m in ms2 where m != "" where m.Length >= 7 select GetDigits(m) into num where num.Length >= 6 && num.Length < 11 select num).ToList();
+								if (ms2.Count > 0)
+								{
+									var ter = res2;
+								}
                 return res;
             }
         }
@@ -486,27 +498,32 @@ namespace VkParser
             }
         }
 
-        private List<string> GetPhotosId(string group_id, List<string> AlbumsId)
+        private List<Photo> GetPhotosId(string group_id, List<string> AlbumsId)
         {
-            var res = new List<string>();
+            var res = new List<Photo>();
             XmlDocument doc;
             XmlNodeList photoId;
-            foreach (var re in res)
+					XmlNodeList text;
+            foreach (var alb in AlbumsId)
             {
                 int offset = 0;
                 while (true)
                 {
                     string response =
                         Request("https://api.vk.com/method/photos.get.xml?owner_id=-" + group_id + "&album_id=" +
-                                re + "&offset=" + offset + "&count=100&access_token=" + UserInfo.Acces_token);
+                                alb + "&offset=" + offset + "&count=100&access_token=" + UserInfo.Acces_token);
                     Thread.Sleep(350);
                     doc = new XmlDocument();
                     doc.LoadXml(response);
                     photoId = doc.GetElementsByTagName("pid");
+									text = doc.GetElementsByTagName("text");
                     if (photoId.Count != 0)
                     {
-                        res.AddRange(photoId.Cast<object>().Cast<string>());
-                        offset += 100;
+											for (var i = 0; i < photoId.Count; i++)
+											{
+												res.Add(new Photo() { id = photoId[i].InnerText, text = text[i].InnerText});
+											}
+												offset += 100;
                         Thread.Sleep(350);
                     }
                     else
@@ -516,20 +533,20 @@ namespace VkParser
             return res;
         }
 
-        private void GetPhotosComments(string group_id, List<string> AlbumsId)
+				private void GetPhotosComments(string group_id, List<Photo> photosId)
         {
             
             XmlDocument doc;
             XmlNodeList fromId;
             XmlNodeList photoId;
             XmlNodeList text;
-            for (var i = 0; i < AlbumsId.Count; i++)
+						for (var i = 0; i < photosId.Count; i++)
             {
                 int offset = 0;
                 while (true)
                 {
                     string response =
-                        Request("https://api.vk.com/method/photos.getComments.xml?owner_id=-" + group_id + "&album_id="+AlbumsId[i]+"&offset=" +
+												Request("https://api.vk.com/method/photos.getComments.xml?owner_id=-" + group_id + "&photo_id=" + photosId[i].id + "&offset=" +
                                 offset + "&count=100&access_token=" + UserInfo.Acces_token);
                     Thread.Sleep(350);
                     doc = new XmlDocument();
@@ -537,18 +554,24 @@ namespace VkParser
                     fromId = doc.GetElementsByTagName("from_id");
                     photoId = doc.GetElementsByTagName("pid");
                     text = doc.GetElementsByTagName("message");
-                    if (fromId.Count != 0)
-                    {
-                        for (int j = 0; j < fromId.Count; j++)
-                        {
-                            string commentLink = "http://vk.com/photo-" + group_id + "_" + photoId[j].InnerText;
-                            Comments.Add(new Comment(fromId[j].InnerText, commentLink, text[j].InnerText));
-                        }
-                        offset += 100;
-                        Thread.Sleep(350);
-                    }
-                    else
-                        break;
+										string commentLink = "http://vk.com/photo-" + group_id + "_" + photosId[i].id;
+										if (fromId.Count != 0)
+										{
+											for (int j = 0; j < fromId.Count; j++)
+											{
+												if(j==0)
+													Comments.Add(new Comment(fromId[j].InnerText, commentLink, text[j].InnerText + "\r\n" + photosId[i].text));
+												else
+													Comments.Add(new Comment(fromId[j].InnerText, commentLink, text[j].InnerText));
+											}
+											offset += 100;
+											Thread.Sleep(350);
+										}
+										else
+										{
+											Comments.Add(new Comment("", commentLink, photosId[i].text));
+											break;
+										}
                 }
             }
         }
