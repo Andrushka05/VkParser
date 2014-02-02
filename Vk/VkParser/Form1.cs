@@ -1,13 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
 using System.Xml;
 using System.Threading;
 using System.Text.RegularExpressions;
+using OfficeOpenXml;
+using OfficeOpenXml.Style;
 
 namespace VkParser
 {
@@ -21,6 +25,8 @@ namespace VkParser
         private Thread tread;
         private Label lb_state1;
         List<Comment> arrResult;
+        private List<Album> albums;
+        private string groupId = "";
 
         public Form1()
         {
@@ -42,8 +48,8 @@ namespace VkParser
             {
                 AuthorizationForm auth = new AuthorizationForm();
                 auth.ShowDialog();
-            }       
-         }
+            }
+        }
 
         private void bt_start_Click(object sender, EventArgs e)
         {
@@ -98,7 +104,7 @@ namespace VkParser
                     ShowMessage("Группа: " + Groups[i] + " cбор данных с изображений");
                     GetPhotosAlbum(Groups[i], ref AlbumsId);
                     var photoIds = GetPhotosId(Groups[i], AlbumsId);
-                    GetPhotosComments(Groups[i],photoIds);
+                    GetPhotosComments(Groups[i], photoIds);
                 }
             }
             ShowMessage("Обработка данных");
@@ -129,8 +135,8 @@ namespace VkParser
                 return result;
             }
             catch
-            { 
-                return null; 
+            {
+                return null;
             }
         }
 
@@ -373,7 +379,7 @@ namespace VkParser
                 List<Comment> Admin = new List<Comment>();
                 for (int i = 0; i < Comments.Count; i++)
                 {
-									if (Comments[i].UserId!=null&&Convert.ToInt64(Comments[i].UserId) < 0)
+                    if (Comments[i].UserId != null && Convert.ToInt64(Comments[i].UserId) < 0)
                     {
                         Comments[i].UserName = "admin";
                         Admin.Add(Comments[i]);
@@ -426,26 +432,36 @@ namespace VkParser
         private List<string> PhoneSearch(Comment obj)
         {
             string pattern = @"(^((8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)|(?<=\W)(8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)";
-					var pattern2=@"((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}";
             string str = obj.CommentText;
-						if (str.Contains("http"))
-							str = str.Remove(str.IndexOf("http"), str.IndexOf(" ", str.IndexOf("http")) - str.IndexOf("http"));
-					if(str.Contains("id"))
-						str = str.Remove(str.IndexOf("id"), str.IndexOf("]", str.IndexOf("id")) - str.IndexOf("id"));
+            var res = new List<string>();
             while (true)
             {
                 Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
-								Regex r2 = new Regex(pattern2, RegexOptions.IgnoreCase);
-                var ms = r.Matches(str).Cast<Match>().Select(m => m.Value).ToList();
-								var ms2 = r2.Matches(str).Cast<Match>().Select(m => m.Value).ToList();
-                var res = (from m in ms where m != "" where m.Length >= 9 select GetDigits(m) into num where num.Length >= 6&&num.Length<11 select num).ToList();
-								var res2 = (from m in ms2 where m != "" where m.Length >= 7 select GetDigits(m) into num where num.Length >= 6 && num.Length < 11 select num).ToList();
-								if (ms2.Count > 0)
-								{
-									var ter = res2;
-								}
-                return res;
+                Match m = r.Match(str);
+                if (m.Value != "")
+                {
+                    if (m.Value.Length < 9)
+                    {
+                        str = str.Replace(m.Value, "");
+                    }
+                    else
+                    {
+                        string res3 = GetDigits(m.Value);
+                        if (res3.Length >= 9)
+                        {
+                            res.Add(res3);
+                            str = str.Replace(res3, "");
+                        }
+                        else
+                        {
+                            str = str.Replace(m.Value, "");
+                        }
+                    }
+                }
+                else
+                    break;
             }
+            return res;
         }
 
         private void GetUser(ref List<Comment> arr)
@@ -503,7 +519,7 @@ namespace VkParser
             var res = new List<Photo>();
             XmlDocument doc;
             XmlNodeList photoId;
-					XmlNodeList text;
+            XmlNodeList text;
             foreach (var alb in AlbumsId)
             {
                 int offset = 0;
@@ -516,14 +532,14 @@ namespace VkParser
                     doc = new XmlDocument();
                     doc.LoadXml(response);
                     photoId = doc.GetElementsByTagName("pid");
-									text = doc.GetElementsByTagName("text");
+                    text = doc.GetElementsByTagName("text");
                     if (photoId.Count != 0)
                     {
-											for (var i = 0; i < photoId.Count; i++)
-											{
-												res.Add(new Photo() { id = photoId[i].InnerText, text = text[i].InnerText});
-											}
-												offset += 100;
+                        for (var i = 0; i < photoId.Count; i++)
+                        {
+                            res.Add(new Photo() { id = photoId[i].InnerText, text = text[i].InnerText });
+                        }
+                        offset += 100;
                         Thread.Sleep(350);
                     }
                     else
@@ -533,20 +549,20 @@ namespace VkParser
             return res;
         }
 
-				private void GetPhotosComments(string group_id, List<Photo> photosId)
+        private void GetPhotosComments(string group_id, List<Photo> photosId)
         {
-            
+
             XmlDocument doc;
             XmlNodeList fromId;
             XmlNodeList photoId;
             XmlNodeList text;
-						for (var i = 0; i < photosId.Count; i++)
+            for (var i = 0; i < photosId.Count; i++)
             {
                 int offset = 0;
                 while (true)
                 {
                     string response =
-												Request("https://api.vk.com/method/photos.getComments.xml?owner_id=-" + group_id + "&photo_id=" + photosId[i].id + "&offset=" +
+                                                Request("https://api.vk.com/method/photos.getComments.xml?owner_id=-" + group_id + "&photo_id=" + photosId[i].id + "&offset=" +
                                 offset + "&count=100&access_token=" + UserInfo.Acces_token);
                     Thread.Sleep(350);
                     doc = new XmlDocument();
@@ -554,24 +570,24 @@ namespace VkParser
                     fromId = doc.GetElementsByTagName("from_id");
                     photoId = doc.GetElementsByTagName("pid");
                     text = doc.GetElementsByTagName("message");
-										string commentLink = "http://vk.com/photo-" + group_id + "_" + photosId[i].id;
-										if (fromId.Count != 0)
-										{
-											for (int j = 0; j < fromId.Count; j++)
-											{
-												if(j==0)
-													Comments.Add(new Comment(fromId[j].InnerText, commentLink, text[j].InnerText + "\r\n" + photosId[i].text));
-												else
-													Comments.Add(new Comment(fromId[j].InnerText, commentLink, text[j].InnerText));
-											}
-											offset += 100;
-											Thread.Sleep(350);
-										}
-										else
-										{
-											Comments.Add(new Comment("", commentLink, photosId[i].text));
-											break;
-										}
+                    string commentLink = "http://vk.com/photo-" + group_id + "_" + photosId[i].id;
+                    if (fromId.Count != 0)
+                    {
+                        for (int j = 0; j < fromId.Count; j++)
+                        {
+                            if (j == 0)
+                                Comments.Add(new Comment(fromId[j].InnerText, commentLink, text[j].InnerText + "\r\n" + photosId[i].text));
+                            else
+                                Comments.Add(new Comment(fromId[j].InnerText, commentLink, text[j].InnerText));
+                        }
+                        offset += 100;
+                        Thread.Sleep(350);
+                    }
+                    else
+                    {
+                        Comments.Add(new Comment("", commentLink, photosId[i].text));
+                        break;
+                    }
                 }
             }
         }
@@ -799,6 +815,209 @@ namespace VkParser
             lb_state1.TabIndex = 1;
             lb_state1.Text = "Готово";
             Controls.Add(lb_state1);
+        }
+
+        private void btnAlbum_Click(object sender, EventArgs e)
+        {
+            Control.CheckForIllegalCrossThreadCalls = false;
+            treeView1.Nodes.Clear();
+            btnAlbum.Enabled = false;
+            btnParser.Visible = false;
+            this.Update();
+            tread = new Thread(GetNameAlbum);
+            tread.Start();
+        }
+
+        private void GetNameAlbum()
+        {
+            try
+            {
+                string pattern = @"(?<=com\/).*";
+                albums = new List<Album>();
+                Thread.Sleep(1000);
+                Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
+                Match m = r.Match(tbLink.Text);
+                if (m.Value != "")
+                {
+                    XmlDocument doc = new XmlDocument();
+                    string response =
+                        Request("https://api.vk.com/method/groups.getById.xml?group_id=" + m.Value + "&access_token=" +
+                                UserInfo.Acces_token);
+                    doc.LoadXml(response);
+                    XmlNodeList n = doc.GetElementsByTagName("gid");
+                    groupId = n[0].InnerText;
+                    int offset = 0;
+                    while (true)
+                    {
+                        string response2 =
+                            Request("https://api.vk.com/method/photos.getAlbums.xml?owner_id=-" + groupId + "&offset=" +
+                                    offset +
+                                    "&count=100&filter=all&access_token=" + UserInfo.Acces_token);
+                        Thread.Sleep(350);
+                        XmlDocument doc2 = new XmlDocument();
+                        doc2.LoadXml(response2);
+                        XmlNodeList ids = doc2.GetElementsByTagName("aid");
+                        XmlNodeList names = doc2.GetElementsByTagName("title");
+                        if (ids.Count != 0)
+                        {
+                            for (var i = 0; i < ids.Count; i++)
+                            {
+                                albums.Add(new Album() {Id = ids[i].InnerText, Name = names[i].InnerText});
+                            }
+                            offset += 100;
+                        }
+                        else
+                            break;
+                    }
+                    if (albums.Any())
+                    {
+                        foreach (var album in albums)
+                        {
+                            this.Invoke(new Action(() => { treeView1.Nodes.Add(album.Name); }));
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Ошибка: " + e);
+            }
+            this.Invoke(new Action(() => { btnAlbum.Enabled=true; }));
+            this.Invoke(new Action(() => { btnParser.Visible = true; }));
+        }
+
+        private void btnParser_Click(object sender, EventArgs e)
+        {
+            Control.CheckForIllegalCrossThreadCalls = false;
+            btnAlbum.Enabled = false;
+            btnParser.Enabled = false;
+            this.Update();
+            tread = new Thread(GetItemsOfAlbum);
+            tread.Start();
+        }
+
+        private void GetItemsOfAlbum()
+        {
+            var parsAlbum = new List<Album>();
+            var products = new List<Product>();
+            foreach (TreeNode aNode in treeView1.Nodes)
+            {
+                if (aNode.Checked)
+                {
+                    parsAlbum.Add(albums.FirstOrDefault(x => x.Name == aNode.Text));
+                }
+            }
+            foreach (var album in parsAlbum)
+            {
+
+                int offset = 0;
+                while (true)
+                {
+                    string response =
+                        Request("https://api.vk.com/method/photos.get.xml?owner_id=-" + groupId + "&album_id=" +
+                                album.Id + "&offset=" + offset + "&count=100&access_token=" + UserInfo.Acces_token);
+                    Thread.Sleep(350);
+                    var doc = new XmlDocument();
+                    doc.LoadXml(response);
+                    var photoId = doc.GetElementsByTagName("pid");
+                    var photos = doc.GetElementsByTagName("src_xxbig");
+                    if (photos.Count != photoId.Count)
+                    {
+                        photos=doc.GetElementsByTagName("src_xbig");
+                        if(photos.Count != photoId.Count)
+                            photos = doc.GetElementsByTagName("src_big");
+                    }
+                    var text = doc.GetElementsByTagName("text");
+                    if (photoId.Count != 0)
+                    {
+                        for (var i = 0; i < photoId.Count; i++)
+                        {
+                            products.Add(new Product() { Id = photoId[i].InnerText, Text = text[i].InnerText.Replace("<br>","\r\n"), Src = photos[i].InnerText });
+                        }
+                        offset += 100;
+                        Thread.Sleep(350);
+                    }
+                    else
+                        break;
+                }
+            }
+            //save to file
+            SaveExcel2007(products, Environment.CurrentDirectory+@"\excel_"+DateTime.Now.Hour+""+DateTime.Now.Minute+""+DateTime.Now.Second+".xlsx");
+            this.Invoke(new Action(() => { btnAlbum.Enabled = true; }));
+            this.Invoke(new Action(() => { btnParser.Enabled = true; }));
+        }
+
+        public static void SaveExcel2007(IEnumerable<Product> list, string path)
+        {
+
+            using (var p = new ExcelPackage(File.Exists(path) ? new FileInfo(path) : null))
+            {
+                p.Workbook.Properties.Title = "VK";
+
+                //Create a sheet
+                //p.Workbook.Worksheets.Add("Sample WorkSheet");
+                ExcelWorksheet ws = null;
+                int colIndex = 1;
+                int rowIndex = 1;
+                if (p.Workbook.Worksheets.Count == 0)
+                {
+                    ws = p.Workbook.Worksheets.Add("Sample WorkSheet");
+                    ws.Name = "Vk"; //Setting Sheet's name
+                    ws.Cells.Style.Font.Size = 11; //Default font size for whole sheet
+                    ws.Cells.Style.Font.Name = "Calibri"; //Default Font name for whole sheet
+
+                    colIndex = 1;
+
+                    var cell = ws.Cells[rowIndex, colIndex];
+                    var cel2 = ws.Cells[rowIndex + 1, colIndex];
+                    var cel3 = ws.Cells[rowIndex, colIndex + 1];
+                    var cel4 = ws.Cells[rowIndex + 1, colIndex + 1];
+                    var cel5 = ws.Cells[rowIndex, colIndex + 2];
+                    var cel6 = ws.Cells[rowIndex + 1, colIndex + 2];
+                    //Setting the background color of header cells to Gray
+                    var fill = cel2.Style.Fill;
+                    //fill.PatternType = ExcelFillStyle.Solid;
+                    //fill.BackgroundColor.SetColor(Color.Gray);
+                    cel2.Style.Font.Bold = true;
+                    cel4.Style.Font.Bold = true;
+                    cel6.Style.Font.Bold = true;
+
+                    //Setting Top/left,right/bottom borders.
+                    var border = cel2.Style.Border = cel4.Style.Border = cel6.Style.Border;
+                    border.Bottom.Style =
+                        border.Top.Style =
+                        border.Left.Style =
+                        border.Right.Style = ExcelBorderStyle.Thin;
+                    cell.Value = "id";
+                    cel2.Value = "id";
+                    cel3.Value = "text";
+                    cel4.Value = "Описание";
+                    cel5.Value = "src";
+                    cel6.Value = "Фото";
+
+                }
+                else
+                    ws = p.Workbook.Worksheets.First();
+
+                rowIndex = ws.Dimension.End.Row;
+                foreach (var l in list) // Adding Data into rows
+                {
+                    rowIndex++;
+                    var cell = ws.Cells[rowIndex, colIndex];
+                    var cel2 = ws.Cells[rowIndex, colIndex+1];
+                    var cel3 = ws.Cells[rowIndex, colIndex+2];
+                    
+                        var border = cell.Style.Border= cel2.Style.Border= cel3.Style.Border;
+                        border.Left.Style =
+                            border.Right.Style = ExcelBorderStyle.Thin;
+                    cell.Value = l.Id;
+                    cel2.Value = l.Text;
+                    cel3.Value = l.Src;
+                }
+               
+                Byte[] bin = p.GetAsByteArray();
+                File.WriteAllBytes(path, bin);
+            }
         }
     }
 }
