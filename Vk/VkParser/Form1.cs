@@ -23,6 +23,7 @@ namespace VkParser
         private List<Comment> Comments;
         private WebBrowser webBrowser;
         private Thread tread;
+				private Thread threadProd;
         private Label lb_state1;
         List<Comment> arrResult;
         private List<Album> albums;
@@ -379,7 +380,7 @@ namespace VkParser
                 List<Comment> Admin = new List<Comment>();
                 for (int i = 0; i < Comments.Count; i++)
                 {
-                    if (Comments[i].UserId != null && Convert.ToInt64(Comments[i].UserId) < 0)
+                    if (Comments[i].UserId != null&&Comments[i].UserId.Length>0 && Convert.ToInt64(Comments[i].UserId) < 0)
                     {
                         Comments[i].UserName = "admin";
                         Admin.Add(Comments[i]);
@@ -450,7 +451,7 @@ namespace VkParser
                         if (res3.Length >= 9)
                         {
                             res.Add(res3);
-                            str = str.Replace(res3, "");
+														str = str.Replace(m.Value, "");
                         }
                         else
                         {
@@ -824,8 +825,8 @@ namespace VkParser
             btnAlbum.Enabled = false;
             btnParser.Visible = false;
             this.Update();
-            tread = new Thread(GetNameAlbum);
-            tread.Start();
+            threadProd = new Thread(GetNameAlbum);
+						threadProd.Start();
         }
 
         private void GetNameAlbum()
@@ -871,10 +872,17 @@ namespace VkParser
                     }
                     if (albums.Any())
                     {
-                        foreach (var album in albums)
+											var nodes = new TreeNode();
+											nodes.Name = "Альбомы";
+                        foreach (var album in albums.OrderBy(x=>x.Name))
                         {
-                            this.Invoke(new Action(() => { treeView1.Nodes.Add(album.Name); }));
+													nodes.Nodes.Add(album.Name);
                         }
+												this.Invoke(new Action(() =>
+												{
+													treeView1.Nodes.Add(nodes);
+
+												}));
                     }
                 }
             }
@@ -892,24 +900,25 @@ namespace VkParser
             btnAlbum.Enabled = false;
             btnParser.Enabled = false;
             this.Update();
-            tread = new Thread(GetItemsOfAlbum);
-            tread.Start();
+						threadProd = new Thread(GetItemsOfAlbum);
+						threadProd.Start();
         }
 
         private void GetItemsOfAlbum()
         {
             var parsAlbum = new List<Album>();
-            var products = new List<Product>();
+            
             foreach (TreeNode aNode in treeView1.Nodes)
             {
-                if (aNode.Checked)
+							foreach (TreeNode n in aNode.Nodes)
+                if (n.Checked)
                 {
-                    parsAlbum.Add(albums.FirstOrDefault(x => x.Name == aNode.Text));
+                    parsAlbum.Add(albums.FirstOrDefault(x => x.Name == n.Text));
                 }
             }
             foreach (var album in parsAlbum)
             {
-
+							var products = new List<Product>();
                 int offset = 0;
                 while (true)
                 {
@@ -940,9 +949,12 @@ namespace VkParser
                     else
                         break;
                 }
+								//save to file
+								var path = album.Name.Replace(" ", "_").Replace("*", "x").Replace("\"", "_").Replace("/", "_").Replace("<", "_").Replace("?", "_").Replace(">", "_").Replace("\\", "_").Replace(":", "_").Replace("|", "_");
+								SaveExcel2007(products, Environment.CurrentDirectory + @"\"+path+"_" + DateTime.Now.Hour + "" + DateTime.Now.Minute + "" + DateTime.Now.Second + ".xlsx");
             }
-            //save to file
-            SaveExcel2007(products, Environment.CurrentDirectory+@"\excel_"+DateTime.Now.Hour+""+DateTime.Now.Minute+""+DateTime.Now.Second+".xlsx");
+            
+            
             this.Invoke(new Action(() => { btnAlbum.Enabled = true; }));
             this.Invoke(new Action(() => { btnParser.Enabled = true; }));
         }
@@ -1019,5 +1031,31 @@ namespace VkParser
                 File.WriteAllBytes(path, bin);
             }
         }
+
+				private void treeView1_AfterCheck(object sender, TreeViewEventArgs e)
+				{
+					// The code only executes if the user caused the checked state to change.
+					if (e.Action != TreeViewAction.Unknown)
+					{
+						if (e.Node.Nodes.Count > 0)
+						{
+							/* Calls the CheckAllChildNodes method, passing in the current 
+							Checked value of the TreeNode whose checked state changed. */
+							this.CheckAllChildNodes(e.Node, e.Node.Checked);
+						}
+					}
+				}
+				private void CheckAllChildNodes(TreeNode treeNode, bool nodeChecked)
+				{
+					foreach (TreeNode node in treeNode.Nodes)
+					{
+						node.Checked = nodeChecked;
+						if (node.Nodes.Count > 0)
+						{
+							// If the current node has child nodes, call the CheckAllChildsNodes method recursively.
+							this.CheckAllChildNodes(node, nodeChecked);
+						}
+					}
+				}
     }
 }
