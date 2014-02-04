@@ -48,9 +48,13 @@
 			this.treeView1 = new System.Windows.Forms.TreeView();
 			this.label3 = new System.Windows.Forms.Label();
 			this.tbLink = new System.Windows.Forms.TextBox();
+			this.rb2003 = new System.Windows.Forms.RadioButton();
+			this.rb2007 = new System.Windows.Forms.RadioButton();
+			this.groupBox1 = new System.Windows.Forms.GroupBox();
 			this.tabControl1.SuspendLayout();
 			this.tabPage1.SuspendLayout();
 			this.tabPage2.SuspendLayout();
+			this.groupBox1.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// bt_start
@@ -201,13 +205,14 @@
 			this.tabPage1.Location = new System.Drawing.Point(4, 22);
 			this.tabPage1.Name = "tabPage1";
 			this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
-			this.tabPage1.Size = new System.Drawing.Size(385, 290);
+			this.tabPage1.Size = new System.Drawing.Size(476, 290);
 			this.tabPage1.TabIndex = 0;
 			this.tabPage1.Text = "Номера телефонов";
 			this.tabPage1.UseVisualStyleBackColor = true;
 			// 
 			// tabPage2
 			// 
+			this.tabPage2.Controls.Add(this.groupBox1);
 			this.tabPage2.Controls.Add(this.btnParser);
 			this.tabPage2.Controls.Add(this.btnAlbum);
 			this.tabPage2.Controls.Add(this.treeView1);
@@ -268,6 +273,39 @@
 			this.tbLink.Size = new System.Drawing.Size(167, 20);
 			this.tbLink.TabIndex = 0;
 			// 
+			// rb2003
+			// 
+			this.rb2003.AutoSize = true;
+			this.rb2003.Checked = true;
+			this.rb2003.Location = new System.Drawing.Point(9, 19);
+			this.rb2003.Name = "rb2003";
+			this.rb2003.Size = new System.Drawing.Size(75, 17);
+			this.rb2003.TabIndex = 4;
+			this.rb2003.TabStop = true;
+			this.rb2003.Text = "Excel2003";
+			this.rb2003.UseVisualStyleBackColor = true;
+			// 
+			// rb2007
+			// 
+			this.rb2007.AutoSize = true;
+			this.rb2007.Location = new System.Drawing.Point(9, 42);
+			this.rb2007.Name = "rb2007";
+			this.rb2007.Size = new System.Drawing.Size(75, 17);
+			this.rb2007.TabIndex = 4;
+			this.rb2007.Text = "Excel2007";
+			this.rb2007.UseVisualStyleBackColor = true;
+			// 
+			// groupBox1
+			// 
+			this.groupBox1.Controls.Add(this.rb2003);
+			this.groupBox1.Controls.Add(this.rb2007);
+			this.groupBox1.Location = new System.Drawing.Point(11, 97);
+			this.groupBox1.Name = "groupBox1";
+			this.groupBox1.Size = new System.Drawing.Size(167, 69);
+			this.groupBox1.TabIndex = 5;
+			this.groupBox1.TabStop = false;
+			this.groupBox1.Text = "Сохранять в";
+			// 
 			// Form1
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -282,6 +320,8 @@
 			this.tabPage1.PerformLayout();
 			this.tabPage2.ResumeLayout(false);
 			this.tabPage2.PerformLayout();
+			this.groupBox1.ResumeLayout(false);
+			this.groupBox1.PerformLayout();
 			this.ResumeLayout(false);
 
         }
@@ -308,6 +348,9 @@
         private System.Windows.Forms.Button btnParser;
         private System.Windows.Forms.Button btnAlbum;
         private System.Windows.Forms.TreeView treeView1;
+				private System.Windows.Forms.GroupBox groupBox1;
+				private System.Windows.Forms.RadioButton rb2003;
+				private System.Windows.Forms.RadioButton rb2007;
     }
 }
 
