@@ -106,8 +106,13 @@ namespace VkParser
 				{
 					ShowMessage("Группа: " + Groups[i] + " cбор данных с изображений");
 					GetPhotosAlbum(Groups[i], ref AlbumsId);
-					var photoIds = GetPhotosId(Groups[i], AlbumsId);
-					GetPhotosComments(Groups[i], photoIds);
+					GetPhotosText(Groups[i], AlbumsId);
+				}
+				if (checkBox5.Checked)
+				{
+					ShowMessage("Группа: " + Groups[i] + " cбор данных с подписи фото");
+					GetPhotosAlbum(Groups[i], ref AlbumsId);
+					GetPhotosComments(Groups[i], AlbumsId);
 				}
 			}
 			ShowMessage("Обработка данных");
@@ -431,15 +436,65 @@ namespace VkParser
 		{
 			Loaded = true;
 		}
-
-		private List<string> PhoneSearch(Comment obj)
+		private bool PhoneContains(string str)
 		{
+			str=str.Replace("#", "");
+				string url = @"((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)";
+				var ms = Regex.Matches(str, url).Cast<Match>().Select(m => m.Value).ToList();
+				foreach (var m in ms)
+				{
+					str=str.Replace(m,"");
+				}
+				if (str.Contains("vk.com"))
+				{
+					str = str.Replace("vk.com", " www.vk.com");
+					ms = Regex.Matches(str, url).Cast<Match>().Select(m => m.Value).ToList();
+					foreach (var m in ms)
+					{
+						str = str.Replace(m, "");
+					}
+				}
 			string pattern = @"(^((8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)|(?<=\W)(8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)";
-			string pat2 = @"^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}";
+			string pat2 = @"(\d{1}\D{,2}\d{3}\D{,2}\d{3}\D{,2}\d{2}\D{,2}\d{2})";
 			string pat3 =
-					@"/^(?:8(?:(?:21|22|23|24|51|52|53|54|55)|(?:15\d\d))?|\+?7)?(?:(?:3[04589]|4[012789]|8[^89\D]|9\d)\d)?\d{7}$/";
-			string str = obj.CommentText;
+					@"(?:8(?:(?:21|22|23|24|51|52|53|54|55)|(?:15\d\d))?|\+?7)?(?:(?:3[04589]|4[012789]|8[^89\D]|9\d)\d)?\d{7}";
+			while (true)
+			{
+				Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
+				Match m = r.Match(str);
+				Match m2 = Regex.Match(str, pat2);
+				Match m3 = Regex.Match(str, pat3);
+				if (m.Value != "")
+				{
+					if (m.Value.Length < 9)
+					{
+						str = str.Replace(m.Value, "");
+					}
+					else
+					{
+						string res3 = GetDigits(m.Value);
+						if (res3.Length >= 9 && res3.Length < 14 && res3[0].ToString() != "0")
+						{
+							return true;
+						}
+						else
+						{
+							str = str.Replace(m.Value, "");
+						}
+					}
+				}
+				else
+					break;
+			}
+			return false;
+		}
+		private List<string> PhoneSearch(string str)
+		{
 			var res = new List<string>();
+			string pattern = @"(^((8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)|(?<=\W)(8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)";
+			string pat2 = @"((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}";
+			string pat3 =
+					@"(?:8(?:(?:21|22|23|24|51|52|53|54|55)|(?:15\d\d))?|\+?7)?(?:(?:3[04589]|4[012789]|8[^89\D]|9\d)\d)?\d{7}";
 			while (true)
 			{
 				Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
@@ -470,6 +525,11 @@ namespace VkParser
 					break;
 			}
 			return res;
+		}
+		private List<string> PhoneSearch(Comment obj)
+		{
+			string str = obj.CommentText;
+			return PhoneSearch(str);
 		}
 
 		private void GetUser(ref List<Comment> arr)
@@ -522,7 +582,7 @@ namespace VkParser
 			}
 		}
 
-		private List<Photo> GetPhotosId(string group_id, List<string> AlbumsId)
+		private void GetPhotosText(string group_id, List<string> AlbumsId)
 		{
 			var res = new List<Photo>();
 			XmlDocument doc;
@@ -536,64 +596,76 @@ namespace VkParser
 					string response =
 							Request("https://api.vk.com/method/photos.get.xml?owner_id=-" + group_id + "&album_id=" +
 											alb + "&offset=" + offset + "&count=100&access_token=" + UserInfo.Acces_token);
-					Thread.Sleep(350);
 					doc = new XmlDocument();
 					doc.LoadXml(response);
 					photoId = doc.GetElementsByTagName("pid");
 					text = doc.GetElementsByTagName("text");
 					if (photoId.Count != 0)
 					{
+						
 						for (var i = 0; i < photoId.Count; i++)
 						{
-							res.Add(new Photo() { id = photoId[i].InnerText, text = text[i].InnerText });
+							if (!string.IsNullOrEmpty(text[i].InnerText))
+							{
+								string commentLink = "http://vk.com/photo-" + group_id + "_" + photoId[i].InnerText;
+								Comments.Add(new Comment("", commentLink, text[i].InnerText));
+							}
 						}
 						offset += 100;
 						Thread.Sleep(350);
 					}
 					else
+					{
+						Thread.Sleep(350);
 						break;
+					}
 				}
 			}
-			return res;
 		}
 
-		private void GetPhotosComments(string group_id, List<Photo> photosId)
+		private void GetPhotosComments(string group_id, List<string> aId)
 		{
 
 			XmlDocument doc;
 			XmlNodeList fromId;
 			XmlNodeList photoId;
 			XmlNodeList text;
-			for (var i = 0; i < photosId.Count; i++)
+			for (var i = 0; i < aId.Count; i++)
 			{
 				int offset = 0;
 				while (true)
 				{
-					string response =
-																			Request("https://api.vk.com/method/photos.getComments.xml?owner_id=-" + group_id + "&photo_id=" + photosId[i].id + "&offset=" +
+					string response = Request("https://api.vk.com/method/photos.getAllComments.xml?owner_id=-" + group_id + "&aid=" + aId[i] + "&offset=" +
 											offset + "&count=100&access_token=" + UserInfo.Acces_token);
-					Thread.Sleep(350);
+					//if (string.IsNullOrEmpty(response))
+					//{
+					//	Thread.Sleep(500);
+					//	response = Request("https://api.vk.com/method/photos.getgetAllComments.xml?owner_id=-" + group_id + "&photo_id=" + photosId[i].id + "&offset=" +
+					//						offset + "&count=100&access_token=" + UserInfo.Acces_token);
+					//	if (string.IsNullOrEmpty(response))
+					//		break;
+					//}
 					doc = new XmlDocument();
 					doc.LoadXml(response);
 					fromId = doc.GetElementsByTagName("from_id");
 					photoId = doc.GetElementsByTagName("pid");
 					text = doc.GetElementsByTagName("message");
-					string commentLink = "http://vk.com/photo-" + group_id + "_" + photosId[i].id;
+					
 					if (fromId.Count != 0)
 					{
 						for (int j = 0; j < fromId.Count; j++)
 						{
-							if (j == 0)
-								Comments.Add(new Comment(fromId[j].InnerText, commentLink, text[j].InnerText + "\r\n" + photosId[i].text));
-							else
+							string commentLink = "http://vk.com/photo-" + group_id + "_" + photoId[i].InnerText;
+							if (!string.IsNullOrEmpty(text[j].InnerText.Trim()) && PhoneContains(text[j].InnerText))
 								Comments.Add(new Comment(fromId[j].InnerText, commentLink, text[j].InnerText));
 						}
+						
 						offset += 100;
-						Thread.Sleep(350);
+						Thread.Sleep(150);
 					}
 					else
 					{
-						Comments.Add(new Comment("", commentLink, photosId[i].text));
+						Thread.Sleep(350);
 						break;
 					}
 				}
@@ -618,6 +690,7 @@ namespace VkParser
 						TopicsId.Add(n.InnerText);
 					}
 					offset += 100;
+					Thread.Sleep(350);
 				}
 				else
 					break;

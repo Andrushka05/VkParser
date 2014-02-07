@@ -43,14 +43,15 @@
 			this.tabControl1 = new System.Windows.Forms.TabControl();
 			this.tabPage1 = new System.Windows.Forms.TabPage();
 			this.tabPage2 = new System.Windows.Forms.TabPage();
+			this.groupBox1 = new System.Windows.Forms.GroupBox();
+			this.rb2003 = new System.Windows.Forms.RadioButton();
+			this.rb2007 = new System.Windows.Forms.RadioButton();
 			this.btnParser = new System.Windows.Forms.Button();
 			this.btnAlbum = new System.Windows.Forms.Button();
 			this.treeView1 = new System.Windows.Forms.TreeView();
 			this.label3 = new System.Windows.Forms.Label();
 			this.tbLink = new System.Windows.Forms.TextBox();
-			this.rb2003 = new System.Windows.Forms.RadioButton();
-			this.rb2007 = new System.Windows.Forms.RadioButton();
-			this.groupBox1 = new System.Windows.Forms.GroupBox();
+			this.checkBox5 = new System.Windows.Forms.CheckBox();
 			this.tabControl1.SuspendLayout();
 			this.tabPage1.SuspendLayout();
 			this.tabPage2.SuspendLayout();
@@ -190,6 +191,7 @@
 			// 
 			// tabPage1
 			// 
+			this.tabPage1.Controls.Add(this.checkBox5);
 			this.tabPage1.Controls.Add(this.tb_path);
 			this.tabPage1.Controls.Add(this.bt_stop);
 			this.tabPage1.Controls.Add(this.bt_start);
@@ -225,6 +227,39 @@
 			this.tabPage2.TabIndex = 1;
 			this.tabPage2.Text = "Товары";
 			this.tabPage2.UseVisualStyleBackColor = true;
+			// 
+			// groupBox1
+			// 
+			this.groupBox1.Controls.Add(this.rb2003);
+			this.groupBox1.Controls.Add(this.rb2007);
+			this.groupBox1.Location = new System.Drawing.Point(11, 97);
+			this.groupBox1.Name = "groupBox1";
+			this.groupBox1.Size = new System.Drawing.Size(167, 69);
+			this.groupBox1.TabIndex = 5;
+			this.groupBox1.TabStop = false;
+			this.groupBox1.Text = "Сохранять в";
+			// 
+			// rb2003
+			// 
+			this.rb2003.AutoSize = true;
+			this.rb2003.Checked = true;
+			this.rb2003.Location = new System.Drawing.Point(9, 19);
+			this.rb2003.Name = "rb2003";
+			this.rb2003.Size = new System.Drawing.Size(75, 17);
+			this.rb2003.TabIndex = 4;
+			this.rb2003.TabStop = true;
+			this.rb2003.Text = "Excel2003";
+			this.rb2003.UseVisualStyleBackColor = true;
+			// 
+			// rb2007
+			// 
+			this.rb2007.AutoSize = true;
+			this.rb2007.Location = new System.Drawing.Point(9, 42);
+			this.rb2007.Name = "rb2007";
+			this.rb2007.Size = new System.Drawing.Size(75, 17);
+			this.rb2007.TabIndex = 4;
+			this.rb2007.Text = "Excel2007";
+			this.rb2007.UseVisualStyleBackColor = true;
 			// 
 			// btnParser
 			// 
@@ -273,38 +308,16 @@
 			this.tbLink.Size = new System.Drawing.Size(167, 20);
 			this.tbLink.TabIndex = 0;
 			// 
-			// rb2003
+			// checkBox5
 			// 
-			this.rb2003.AutoSize = true;
-			this.rb2003.Checked = true;
-			this.rb2003.Location = new System.Drawing.Point(9, 19);
-			this.rb2003.Name = "rb2003";
-			this.rb2003.Size = new System.Drawing.Size(75, 17);
-			this.rb2003.TabIndex = 4;
-			this.rb2003.TabStop = true;
-			this.rb2003.Text = "Excel2003";
-			this.rb2003.UseVisualStyleBackColor = true;
-			// 
-			// rb2007
-			// 
-			this.rb2007.AutoSize = true;
-			this.rb2007.Location = new System.Drawing.Point(9, 42);
-			this.rb2007.Name = "rb2007";
-			this.rb2007.Size = new System.Drawing.Size(75, 17);
-			this.rb2007.TabIndex = 4;
-			this.rb2007.Text = "Excel2007";
-			this.rb2007.UseVisualStyleBackColor = true;
-			// 
-			// groupBox1
-			// 
-			this.groupBox1.Controls.Add(this.rb2003);
-			this.groupBox1.Controls.Add(this.rb2007);
-			this.groupBox1.Location = new System.Drawing.Point(11, 97);
-			this.groupBox1.Name = "groupBox1";
-			this.groupBox1.Size = new System.Drawing.Size(167, 69);
-			this.groupBox1.TabIndex = 5;
-			this.groupBox1.TabStop = false;
-			this.groupBox1.Text = "Сохранять в";
+			this.checkBox5.AutoSize = true;
+			this.checkBox5.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
+			this.checkBox5.Location = new System.Drawing.Point(13, 223);
+			this.checkBox5.Name = "checkBox5";
+			this.checkBox5.Size = new System.Drawing.Size(179, 20);
+			this.checkBox5.TabIndex = 13;
+			this.checkBox5.Text = "в подписи фотографий";
+			this.checkBox5.UseVisualStyleBackColor = true;
 			// 
 			// Form1
 			// 
@@ -351,6 +364,7 @@
 				private System.Windows.Forms.GroupBox groupBox1;
 				private System.Windows.Forms.RadioButton rb2003;
 				private System.Windows.Forms.RadioButton rb2007;
+				private System.Windows.Forms.CheckBox checkBox5;
     }
 }
 
