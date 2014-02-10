@@ -10,17 +10,19 @@ using System.Windows.Forms.VisualStyles;
 using System.Xml;
 using System.Threading;
 using System.Text.RegularExpressions;
+using NPOI.SS.Formula.Functions;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using NPOI.SS.UserModel;
 using NPOI.HSSF.UserModel;
+using Match = System.Text.RegularExpressions.Match;
 
 namespace VkParser
 {
 	public partial class Form1 : Form
 	{
 		private bool Loaded;
-		private string startUrl = "http://api.vkontakte.ru/oauth/authorize?client_id=4093412&scope=8196&redirect_uri=http://api.vkontakte.ru/blank.html&display=popup&response_type=token&hash=0";
+        private string startUrl = "http://api.vkontakte.ru/oauth/authorize?client_id=4093412&scope=262144&redirect_uri=http://api.vkontakte.ru/blank.html&display=popup&response_type=token&hash=0";
 		private List<string> Groups;
 		private List<Comment> Comments;
 		private WebBrowser webBrowser;
@@ -102,16 +104,17 @@ namespace VkParser
 					GetTopicsId(Groups[i], ref TopicsId);
 					GetTopicComments(Groups[i], TopicsId);
 				}
-				if (checkBox3.Checked)
-				{
-					ShowMessage("Группа: " + Groups[i] + " cбор данных с изображений");
-					GetPhotosAlbum(Groups[i], ref AlbumsId);
-					GetPhotosText(Groups[i], AlbumsId);
-				}
 				if (checkBox5.Checked)
 				{
 					ShowMessage("Группа: " + Groups[i] + " cбор данных с подписи фото");
 					GetPhotosAlbum(Groups[i], ref AlbumsId);
+					GetPhotosText(Groups[i], AlbumsId);
+				}
+				if (checkBox3.Checked)
+				{
+					ShowMessage("Группа: " + Groups[i] + " cбор данных с комментариев в альбомах");
+                    if(!AlbumsId.Any())
+					    GetPhotosAlbum(Groups[i], ref AlbumsId);
 					GetPhotosComments(Groups[i], AlbumsId);
 				}
 			}
@@ -353,63 +356,80 @@ namespace VkParser
 					}
 				}
 				Comments = UsersWithPhone;
-				for (int i = 0; i < Comments.Count; i++)
-				{
-					string p = Comments[i].UserId;
-					bool f = false;
-					for (int j = 0; j < Comments.Count; j++)
-					{
-						if (!f)
-						{
-							if (p == Comments[j].UserId)
-							{
-								f = true;
-							}
-						}
-						else
-						{
-							if (p == Comments[j].UserId)
-							{
-								Comments[j].UserPhone = null;
-							}
-						}
-					}
-				}
-				UsersWithPhone = new List<Comment>();
-				for (int i = 0; i < Comments.Count; i++)
-				{
-					if (Comments[i].UserPhone != null)
-					{
-						UsersWithPhone.Add(Comments[i]);
-					}
-				}
-				Comments = UsersWithPhone;
-				List<Comment> Admin = new List<Comment>();
-				for (int i = 0; i < Comments.Count; i++)
-				{
-					if (Comments[i].UserId != null && Comments[i].UserId.Length > 0 && Convert.ToInt64(Comments[i].UserId) < 0)
-					{
-						Comments[i].UserName = "admin";
-						Admin.Add(Comments[i]);
-						Comments.RemoveAt(i);
-					}
-				}
+			    var userPhone = Comments.SelectMany(comment => comment.UserPhone).ToList();
+			    var hash = new HashSet<string>(userPhone);
+			    var temps = new List<Comment>();
+			    foreach (var h in userPhone)
+			    {
+			        foreach (var comment in Comments)
+			        {
+			            var t = comment.UserPhone.FirstOrDefault(x => x.Equals(h));
+			            if (t != null)
+			            {
+			                var com = comment;
+			                com.UserPhone = new List<string>() {h};
+			                temps.Add(com);
+			                break;
+			            }
+			        }
+			    }
+                
+                //for (int i = 0; i < Comments.Count; i++)
+                //{
+                //    string p = Comments[i].UserId;
+                //    bool f = false;
+                //    for (int j = 0; j < Comments.Count; j++)
+                //    {
+                //        if (!f)
+                //        {
+                //            if (p == Comments[j].UserId)
+                //            {
+                //                f = true;
+                //            }
+                //        }
+                //        else
+                //        {
+                //            if (p == Comments[j].UserId)
+                //            {
+                //                Comments[j].UserPhone = null;
+                //            }
+                //        }
+                //    }
+                //}
+                //UsersWithPhone = new List<Comment>();
+                //for (int i = 0; i < Comments.Count; i++)
+                //{
+                //    if (Comments[i].UserPhone != null)
+                //    {
+                //        UsersWithPhone.Add(Comments[i]);
+                //    }
+                //}
+                //Comments = UsersWithPhone;
+                //List<Comment> Admin = new List<Comment>();
+                //for (int i = 0; i < Comments.Count; i++)
+                //{
+                //    if (Comments[i].UserId != null && Comments[i].UserId.Length > 0 && Convert.ToInt64(Comments[i].UserId) < 0)
+                //    {
+                //        Comments[i].UserName = "admin";
+                //        Admin.Add(Comments[i]);
+                //        Comments.RemoveAt(i);
+                //    }
+                //}
 
-				if (Comments.Count > 50)
-				{
-					arrResult = new List<Comment>();
-					for (int q = 0; q < 50; q++)
-					{
-						arrResult.Add(Comments[q]);
-					}
+                //if (Comments.Count > 50)
+                //{
+                //    arrResult = new List<Comment>();
+                //    for (int q = 0; q < 50; q++)
+                //    {
+                //        arrResult.Add(Comments[q]);
+                //    }
+                //    GetUser(ref arrResult);
+                //}
+                //else
+                //{
+					var arrResult = temps;
 					GetUser(ref arrResult);
-				}
-				else
-				{
-					arrResult = new List<Comment>();
-					arrResult = Comments;
-					GetUser(ref arrResult);
-				}
+                //}
 
 				try
 				{
@@ -454,16 +474,12 @@ namespace VkParser
 						str = str.Replace(m, "");
 					}
 				}
-			string pattern = @"(^((8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)|(?<=\W)(8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)";
-			string pat2 = @"(\d{1}\D{,2}\d{3}\D{,2}\d{3}\D{,2}\d{2}\D{,2}\d{2})";
-			string pat3 =
-					@"(?:8(?:(?:21|22|23|24|51|52|53|54|55)|(?:15\d\d))?|\+?7)?(?:(?:3[04589]|4[012789]|8[^89\D]|9\d)\d)?\d{7}";
+                //@"(^((8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)|(?<=\W)(8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)"
+			string pattern = @"(^((8|\+7|7|9)(\s|\d|\-)*)|(?<=\W)(8|\+7|7|9)(\s|\d|\-)*)";
 			while (true)
 			{
 				Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
 				Match m = r.Match(str);
-				Match m2 = Regex.Match(str, pat2);
-				Match m3 = Regex.Match(str, pat3);
 				if (m.Value != "")
 				{
 					if (m.Value.Length < 9)
@@ -473,7 +489,7 @@ namespace VkParser
 					else
 					{
 						string res3 = GetDigits(m.Value);
-						if (res3.Length >= 9 && res3.Length < 14 && res3[0].ToString() != "0")
+						if (res3.Length >= 9 && res3.Length < 13 && res3[0].ToString() != "0")
 						{
 							return true;
 						}
@@ -491,16 +507,27 @@ namespace VkParser
 		private List<string> PhoneSearch(string str)
 		{
 			var res = new List<string>();
-			string pattern = @"(^((8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)|(?<=\W)(8|\+7|7|\+3|3|9|0)(\s|\d|\-)*)";
-			string pat2 = @"((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}";
-			string pat3 =
-					@"(?:8(?:(?:21|22|23|24|51|52|53|54|55)|(?:15\d\d))?|\+?7)?(?:(?:3[04589]|4[012789]|8[^89\D]|9\d)\d)?\d{7}";
+            str = str.Replace("#", "");
+            string url = @"((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)";
+            var ms = Regex.Matches(str, url).Cast<Match>().Select(m => m.Value).ToList();
+            foreach (var m in ms)
+            {
+                str = str.Replace(m, "");
+            }
+            if (str.Contains("vk.com"))
+            {
+                str = str.Replace("vk.com", " www.vk.com");
+                ms = Regex.Matches(str, url).Cast<Match>().Select(m => m.Value).ToList();
+                foreach (var m in ms)
+                {
+                    str = str.Replace(m, "");
+                }
+            }
+            string pattern = @"(^((8|\+7|7|9)(\s|\d|\-)*)|(?<=\W)(8|\+7|7|9)(\s|\d|\-)*)";
 			while (true)
 			{
 				Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
 				Match m = r.Match(str);
-				Match m2 = Regex.Match(str, pat2);
-				Match m3 = Regex.Match(str, pat3);
 				if (m.Value != "")
 				{
 					if (m.Value.Length < 9)
@@ -510,7 +537,7 @@ namespace VkParser
 					else
 					{
 						string res3 = GetDigits(m.Value);
-						if (res3.Length >= 9 && res3.Length < 14 && res3[0].ToString() != "0")
+						if (res3.Length >= 9 && res3.Length < 13 && res3[0].ToString() != "0")
 						{
 							res.Add(res3);
 							str = str.Replace(m.Value, "");
@@ -534,25 +561,37 @@ namespace VkParser
 
 		private void GetUser(ref List<Comment> arr)
 		{
-			try
-			{
-				string user_ids = "";
-				for (int i = 0; i < arr.Count; i++)
-				{
-					user_ids += arr[i].UserId + ",";
-				}
-				user_ids = user_ids.Remove(user_ids.Length - 1);
-				string response = Request("https://api.vk.com/method/users.get.xml?user_ids=" + user_ids + "&access_token=" + UserInfo.Acces_token);
-				XmlDocument doc = new XmlDocument();
-				doc.LoadXml(response);
-				XmlNodeList fName = doc.GetElementsByTagName("first_name");
-				XmlNodeList sName = doc.GetElementsByTagName("last_name");
-				for (int j = 0; j < fName.Count; j++)
-				{
-					arr[j].UserName = fName[j].InnerText + " " + sName[j].InnerText;
-				}
-			}
-			catch { }
+		    int j = 0;
+		    while (true)
+		    {
+		        try
+		        {
+		            var temps = arr.GetRange(j, 50);
+		            string user_ids = "";
+		            for (int i = 0; i < temps.Count; i++)
+		            {
+		                user_ids += temps[i].UserId + ",";
+		            }
+		            user_ids = user_ids.Remove(user_ids.Length - 1);
+		            string response =
+		                Request("https://api.vk.com/method/users.get.xml?user_ids=" + user_ids + "&access_token=" +
+		                        UserInfo.Acces_token);
+		            XmlDocument doc = new XmlDocument();
+		            doc.LoadXml(response);
+		            XmlNodeList fName = doc.GetElementsByTagName("first_name");
+		            XmlNodeList sName = doc.GetElementsByTagName("last_name");
+		            for (int z = 0; z < fName.Count; z++)
+		            {
+		                arr[z+j].UserName = fName[z].InnerText + " " + sName[z].InnerText;
+		            }
+		        }
+		        catch
+		        {
+		        }
+		        if (arr.Count < j + 50)
+		            break;
+		        j += 50;
+		    }
 		}
 
 		private void GetPhotosAlbum(string group_id, ref List<string> AlbumsId)
@@ -655,7 +694,7 @@ namespace VkParser
 					{
 						for (int j = 0; j < fromId.Count; j++)
 						{
-							string commentLink = "http://vk.com/photo-" + group_id + "_" + photoId[i].InnerText;
+							string commentLink = "http://vk.com/photo-" + group_id + "_" + aId[i];
 							if (!string.IsNullOrEmpty(text[j].InnerText.Trim()) && PhoneContains(text[j].InnerText))
 								Comments.Add(new Comment(fromId[j].InnerText, commentLink, text[j].InnerText));
 						}
