@@ -12,7 +12,7 @@ namespace VkParser
 {
     public partial class AuthorizationForm : Form
     {
-        private string startUrl = "http://api.vkontakte.ru/oauth/authorize?client_id=4093412&scope=262144&redirect_uri=http://api.vkontakte.ru/blank.html&display=popup&response_type=token&hash=0";
+			private string startUrl = "http://api.vkontakte.ru/oauth/authorize?client_id=4093412&scope=4&redirect_uri=http://api.vkontakte.ru/blank.html&display=popup&response_type=token&hash=0";
 
         public AuthorizationForm()
         {

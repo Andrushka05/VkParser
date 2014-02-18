@@ -22,7 +22,7 @@ namespace VkParser
 	public partial class Form1 : Form
 	{
 		private bool Loaded;
-        private string startUrl = "http://api.vkontakte.ru/oauth/authorize?client_id=4093412&scope=262144&redirect_uri=http://api.vkontakte.ru/blank.html&display=popup&response_type=token&hash=0";
+		private string startUrl = "http://api.vkontakte.ru/oauth/authorize?client_id=4093412&scope=4&redirect_uri=http://api.vkontakte.ru/blank.html&display=popup&response_type=token&hash=0";
 		private List<string> Groups;
 		private List<Comment> Comments;
 		private WebBrowser webBrowser;
@@ -634,7 +634,7 @@ namespace VkParser
 				{
 					string response =
 							Request("https://api.vk.com/method/photos.get.xml?owner_id=-" + group_id + "&album_id=" +
-											alb + "&offset=" + offset + "&count=100&access_token=" + UserInfo.Acces_token);
+											alb.ToString() + "&extended=1&count=1000&access_token=" + UserInfo.Acces_token);
 					doc = new XmlDocument();
 					doc.LoadXml(response);
 					photoId = doc.GetElementsByTagName("pid");
@@ -1054,32 +1054,36 @@ namespace VkParser
 				int offset = 0;
 				while (true)
 				{
-					string response =
-							Request("https://api.vk.com/method/photos.get.xml?owner_id=-" + groupId + "&album_id=" +
-											album.Id + "&offset=" + offset + "&count=100&access_token=" + UserInfo.Acces_token);
-					Thread.Sleep(350);
-					var doc = new XmlDocument();
-					doc.LoadXml(response);
-					var photoId = doc.GetElementsByTagName("pid");
-					var photos = doc.GetElementsByTagName("src_xxbig");
-					if (photos.Count != photoId.Count)
+					try
 					{
-						photos = doc.GetElementsByTagName("src_xbig");
-						if (photos.Count != photoId.Count)
-							photos = doc.GetElementsByTagName("src_big");
-					}
-					var text = doc.GetElementsByTagName("text");
-					if (photoId.Count != 0)
-					{
-						for (var i = 0; i < photoId.Count; i++)
-						{
-							products.Add(new Product() { Id = photoId[i].InnerText, Text = text[i].InnerText.Replace("<br>", "\r\n"), Src = photos[i].InnerText });
-						}
-						offset += 100;
+						string response =
+								Request("https://api.vk.com/method/photos.get.xml?owner_id=-" + groupId + "&album_id=" +
+												album.Id + "&offset=" + offset + "&count=100&access_token=" + UserInfo.Acces_token);
 						Thread.Sleep(350);
+						var doc = new XmlDocument();
+						doc.LoadXml(response);
+						var photoId = doc.GetElementsByTagName("pid");
+						var photos = doc.GetElementsByTagName("src_xxbig");
+						if (photos.Count != photoId.Count)
+						{
+							photos = doc.GetElementsByTagName("src_xbig");
+							if (photos.Count != photoId.Count)
+								photos = doc.GetElementsByTagName("src_big");
+						}
+						var text = doc.GetElementsByTagName("text");
+						if (photoId.Count != 0)
+						{
+							for (var i = 0; i < photoId.Count; i++)
+							{
+								products.Add(new Product() { Id = photoId[i].InnerText, Text = text[i].InnerText.Replace("<br>", "\r\n"), Src = photos[i].InnerText });
+							}
+							offset += 100;
+							Thread.Sleep(350);
+						}
+						else
+							break;
 					}
-					else
-						break;
+					catch (Exception ex) { Thread.Sleep(1000); }
 				}
 				//save to file
 				var path = album.Name.Replace(" ", "_").Replace("*", "x").Replace("\"", "_").Replace("/", "_").Replace("<", "_").Replace("?", "_").Replace(">", "_").Replace("\\", "_").Replace(":", "_").Replace("|", "_");
